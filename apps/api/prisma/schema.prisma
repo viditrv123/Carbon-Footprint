@@ -1,0 +1,82 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActivityCategory {
+  TRANSPORTATION
+  HOME_ENERGY
+  FOOD
+  SHOPPING
+  WASTE
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  password       String
+  name           String
+  country        String     @default("US")
+  avatarUrl      String?
+  monthlyGoalKg  Float?
+  isEmailVerified Boolean   @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  activities     Activity[]
+  refreshTokens  RefreshToken[]
+  streak         Streak?
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Activity {
+  id          String           @id @default(cuid())
+  userId      String
+  category    ActivityCategory
+  subcategory String
+  value       Float
+  unit        String
+  carbonKg    Float
+  date        DateTime         @default(now())
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, category])
+  @@index([date])
+}
+
+model Streak {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  currentDays Int       @default(0)
+  longestDays Int       @default(0)
+  lastLogDate DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
