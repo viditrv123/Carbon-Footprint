@@ -2,6 +2,7 @@ import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { InsightsService } from './insights.service';
+import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @ApiTags('insights')
 @ApiBearerAuth()
@@ -12,7 +13,7 @@ export class InsightsController {
 
   @Get()
   @ApiOperation({ summary: 'Get personalized insights and tips' })
-  getInsights(@Request() req: any) {
+  getInsights(@Request() req: AuthenticatedRequest) {
     return this.insightsService.getInsights(req.user.id);
   }
 }

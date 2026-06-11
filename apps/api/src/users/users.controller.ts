@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -13,20 +14,20 @@ export class UsersController {
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
-  getProfile(@Request() req: any) {
+  getProfile(@Request() req: AuthenticatedRequest) {
     return this.usersService.getProfile(req.user.id);
   }
 
   @Patch('me')
   @ApiOperation({ summary: 'Update profile' })
-  updateProfile(@Request() req: any, @Body() dto: UpdateProfileDto) {
+  updateProfile(@Request() req: AuthenticatedRequest, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, dto);
   }
 
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete account' })
-  deleteAccount(@Request() req: any) {
+  deleteAccount(@Request() req: AuthenticatedRequest) {
     return this.usersService.deleteAccount(req.user.id);
   }
 }

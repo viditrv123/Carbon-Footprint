@@ -59,7 +59,7 @@ export function StatCard({ title, value, subtitle, icon, trend, index = 0 }: Sta
              trend > 0 ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> :
              <Minus className="h-3.5 w-3.5" aria-hidden />}
             <span>
-              {Math.abs(trend).toFixed(1)}% vs last month
+              {trend > 0 ? '+' : trend < 0 ? '−' : ''}{Math.abs(trend).toFixed(1)}% vs last month
             </span>
           </div>
         )}

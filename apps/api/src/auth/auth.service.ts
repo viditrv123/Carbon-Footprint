@@ -11,6 +11,10 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 
+/**
+ * Handles user registration, login, token refresh, and logout.
+ * Access tokens expire in 15 minutes; refresh tokens in 7 days.
+ */
 @Injectable()
 export class AuthService {
   constructor(
@@ -19,7 +23,7 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto): Promise<{ user: Record<string, unknown>; tokens: { accessToken: string; refreshToken: string } }> {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
 
@@ -47,7 +51,7 @@ export class AuthService {
     return { user, tokens };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<{ user: Record<string, unknown>; tokens: { accessToken: string; refreshToken: string } }> {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -59,7 +63,7 @@ export class AuthService {
     return { user: userWithoutPassword, tokens };
   }
 
-  async refreshTokens(refreshToken: string) {
+  async refreshTokens(refreshToken: string): Promise<{ user: Record<string, unknown>; tokens: { accessToken: string; refreshToken: string } }> {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
       include: { user: true },
@@ -77,7 +81,7 @@ export class AuthService {
     return { user: userWithoutPassword, tokens };
   }
 
-  async logout(userId: string, refreshToken?: string) {
+  async logout(userId: string, refreshToken?: string): Promise<void> {
     if (refreshToken) {
       await this.prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
     } else {
@@ -85,21 +89,24 @@ export class AuthService {
     }
   }
 
-  private async generateTokens(userId: string, email: string) {
+  private async generateTokens(userId: string, email: string): Promise<{ accessToken: string; refreshToken: string }> {
+    const jwtSecret = this.config.getOrThrow<string>('JWT_SECRET');
+    const jwtRefreshSecret = this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
     const payload = { sub: userId, email };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.config.get('JWT_SECRET', 'default-secret'),
+        secret: jwtSecret,
         expiresIn: this.config.get('JWT_EXPIRES_IN', '15m'),
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.config.get('JWT_REFRESH_SECRET', 'default-refresh-secret'),
+        secret: jwtRefreshSecret,
         expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
       }),
     ]);
 
     const expiresAt = new Date();
+    expiresAt.getDate();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     await this.prisma.refreshToken.create({

@@ -9,10 +9,9 @@ interface CategoryData {
   carbonKg: number;
   percentage: number;
 }
+interface Props { data: CategoryData[] }
 
-interface Props { data: CategoryData[]; }
-
-function CustomTooltip({ active, payload }: any) {
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payload: CategoryData & { name: string } }[] }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -34,29 +33,50 @@ export function CategoryPieChart({ data }: Props) {
     color: CATEGORY_COLORS[d.category] || '#95D5B2',
   }));
 
+  const total = data.reduce((s, d) => s + d.carbonKg, 0).toFixed(1);
+
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          innerRadius={55}
-          outerRadius={85}
-          paddingAngle={3}
-          dataKey="carbonKg"
-        >
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+    <div
+      role="img"
+      aria-label={`Carbon breakdown by category. Total: ${total} kg CO₂e`}
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={85}
+            paddingAngle={3}
+            dataKey="carbonKg"
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            formatter={(value) => <span className="text-xs text-forest-700">{value}</span>}
+            iconType="circle"
+            iconSize={8}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* Visually-hidden data table for screen readers */}
+      <table className="sr-only">
+        <caption>Carbon emissions by category this month</caption>
+        <thead><tr><th scope="col">Category</th><th scope="col">kg CO₂e</th><th scope="col">Percentage</th></tr></thead>
+        <tbody>
+          {data.map(d => (
+            <tr key={d.category}>
+              <td>{CATEGORY_LABELS[d.category] || d.category}</td>
+              <td>{d.carbonKg.toFixed(2)}</td>
+              <td>{d.percentage}%</td>
+            </tr>
           ))}
-        </Pie>
-        <Tooltip content={<CustomTooltip />} />
-        <Legend
-          formatter={(value) => <span className="text-xs text-forest-700">{value}</span>}
-          iconType="circle"
-          iconSize={8}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+        </tbody>
+      </table>
+    </div>
   );
 }

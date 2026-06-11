@@ -43,6 +43,9 @@ const EMISSION_FACTORS: Record<string, number> = {
   COMPOSTING: -0.08,
 };
 
+/**
+ * Calculates carbon emissions (kg CO2e) for activities using predefined emission factors.
+ */
 @Injectable()
 export class CarbonCalculatorService {
   calculate(subcategory: string, value: number): number {

@@ -36,6 +36,19 @@ const TIPS: Record<ActivityCategory, { title: string; description: string; savin
   ],
 };
 
+export interface InsightItem {
+  id: string;
+  type: 'COMPARISON' | 'TIP' | 'ACHIEVEMENT' | 'WARNING';
+  title: string;
+  description: string;
+  icon: string;
+  category?: import('@prisma/client').ActivityCategory;
+  potentialSavingKg?: number;
+}
+
+/**
+ * Generates personalized carbon reduction insights and tips based on user activity data.
+ */
 @Injectable()
 export class InsightsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -64,7 +77,7 @@ export class InsightsService {
     const sortedCategories = [...categoryTotals.entries()].sort((a, b) => b[1] - a[1]);
     const topCategory = sortedCategories[0]?.[0];
 
-    const insights: any[] = [];
+    const insights: InsightItem[] = [];
 
     // Comparison insight
     const countryAvg = COUNTRY_AVERAGES[user?.country ?? 'DEFAULT'] ?? COUNTRY_AVERAGES.DEFAULT;

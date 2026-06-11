@@ -2,6 +2,7 @@ import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DashboardService } from './dashboard.service';
+import { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -12,7 +13,7 @@ export class DashboardController {
 
   @Get()
   @ApiOperation({ summary: 'Get dashboard statistics' })
-  getStats(@Request() req: any) {
+  getStats(@Request() req: AuthenticatedRequest) {
     return this.dashboardService.getStats(req.user.id);
   }
 }

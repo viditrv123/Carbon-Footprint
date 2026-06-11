@@ -2,11 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityCategory } from '@prisma/client';
 
+/**
+ * Provides aggregated dashboard statistics including monthly totals, category breakdown, and weekly trends.
+ */
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getStats(userId: string) {
+  async getStats(userId: string): Promise<Record<string, unknown>> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -76,24 +79,35 @@ export class DashboardService {
     };
   }
 
-  private async getWeeklyTrend(userId: string) {
-    const days: { date: string; carbonKg: number }[] = [];
+  private async getWeeklyTrend(userId: string): Promise<{ date: string; carbonKg: number }[]> {
     const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
+    const activities = await this.prisma.activity.findMany({
+      where: { userId, date: { gte: sevenDaysAgo } },
+      select: { date: true, carbonKg: true },
+    });
+
+    // Build a map of date-string → total carbonKg
+    const dayMap = new Map<string, number>();
     for (let i = 6; i >= 0; i--) {
-      const day = new Date(now);
-      day.setDate(day.getDate() - i);
-      const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-      const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
-
-      const activities = await this.prisma.activity.findMany({
-        where: { userId, date: { gte: start, lte: end } },
-        select: { carbonKg: true },
-      });
-      const total = activities.reduce((s: number, a: { carbonKg: number }) => s + a.carbonKg, 0);
-      days.push({ date: start.toISOString().split('T')[0], carbonKg: Math.round(total * 100) / 100 });
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      dayMap.set(d.toISOString().split('T')[0], 0);
     }
 
-    return days;
+    for (const a of activities) {
+      const key = a.date.toISOString().split('T')[0];
+      if (dayMap.has(key)) {
+        dayMap.set(key, (dayMap.get(key) ?? 0) + a.carbonKg);
+      }
+    }
+
+    return Array.from(dayMap.entries()).map(([date, carbonKg]) => ({
+      date,
+      carbonKg: Math.round(carbonKg * 100) / 100,
+    }));
   }
 }

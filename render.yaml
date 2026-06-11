@@ -3,7 +3,7 @@ services:
     name: carbon-footprint-api
     runtime: node
     # Install ALL deps (including devDeps for nest/prisma CLIs), then compile
-    buildCommand: npm install --include=dev && cd apps/api && npx prisma generate && npx nest build
+    buildCommand: npm install --include=dev && cd apps/api && npx prisma generate && npx tsc -p tsconfig.build.json && echo "dist check:" && ls dist/main.js
     startCommand: node apps/api/dist/main.js
     preDeployCommand: cd apps/api && npx prisma migrate deploy
     healthCheckPath: /api/v1/health

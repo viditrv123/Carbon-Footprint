@@ -4,6 +4,9 @@ import { CarbonCalculatorService } from './carbon-calculator.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ActivityFiltersDto } from './dto/activity-filters.dto';
 
+/**
+ * Manages carbon activity CRUD operations and streak tracking.
+ */
 @Injectable()
 export class ActivitiesService {
   constructor(
@@ -37,7 +40,7 @@ export class ActivitiesService {
     const { category, startDate, endDate, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { userId };
+    const where: { userId: string; category?: import('@prisma/client').ActivityCategory; date?: { gte?: Date; lte?: Date } } = { userId };
     if (category) where.category = category;
     if (startDate || endDate) {
       where.date = {};
@@ -68,6 +71,54 @@ export class ActivitiesService {
     const activity = await this.prisma.activity.findFirst({ where: { id, userId } });
     if (!activity) throw new NotFoundException('Activity not found');
     return activity;
+  }
+
+  /** Updates an activity's fields. Recalculates carbonKg if value or subcategory changes. */
+  async update(userId: string, id: string, dto: import('./dto/update-activity.dto').UpdateActivityDto): Promise<import('@prisma/client').Activity> {
+    await this.findOne(userId, id);
+
+    let carbonKg: number | undefined;
+    if (dto.value !== undefined || dto.subcategory !== undefined) {
+      const existing = await this.prisma.activity.findUnique({ where: { id } });
+      const sub = dto.subcategory ?? existing!.subcategory;
+      const val = dto.value ?? existing!.value;
+      carbonKg = this.calculator.calculate(sub, val);
+    }
+
+    return this.prisma.activity.update({
+      where: { id },
+      data: {
+        ...(dto.category && { category: dto.category }),
+        ...(dto.subcategory && { subcategory: dto.subcategory }),
+        ...(dto.value !== undefined && { value: dto.value }),
+        ...(dto.unit && { unit: dto.unit }),
+        ...(dto.date && { date: new Date(dto.date) }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(carbonKg !== undefined && { carbonKg }),
+      },
+    });
+  }
+
+  /** Serialises all user activities to CSV format for download. */
+  async exportCsv(userId: string): Promise<string> {
+    const activities = await this.prisma.activity.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+    });
+
+    const header = 'date,category,subcategory,value,unit,carbonKg,notes';
+    const rows = activities.map(a =>
+      [
+        a.date.toISOString().split('T')[0],
+        a.category,
+        a.subcategory,
+        a.value,
+        a.unit,
+        a.carbonKg.toFixed(3),
+        `"${(a.notes ?? '').replace(/"/g, '""')}"`,
+      ].join(','),
+    );
+    return [header, ...rows].join('\n');
   }
 
   async remove(userId: string, id: string) {

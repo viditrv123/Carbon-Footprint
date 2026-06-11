@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsString, IsOptional, IsDateString, Min, MaxLength } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsOptional, IsDateString, Min, Max, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ActivityCategory } from '@prisma/client';
 
@@ -15,6 +15,7 @@ export class CreateActivityDto {
   @ApiProperty({ example: 25.5 })
   @IsNumber()
   @Min(0)
+  @Max(1000000)
   value: number;
 
   @ApiProperty({ example: 'km' })
