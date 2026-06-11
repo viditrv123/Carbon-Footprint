@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: carbon-footprint-api
+    runtime: node
+    # Install ALL deps (including devDeps for nest/prisma CLIs), then compile
+    buildCommand: npm install --include=dev && npm run build --workspace=apps/api
+    startCommand: node apps/api/dist/main.js
+    preDeployCommand: cd apps/api && npx prisma migrate deploy
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: api/v1
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: DATABASE_URL
+        fromDatabase:
+          name: carbon-footprint-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false   # set manually after Vercel deploy
+
+databases:
+  - name: carbon-footprint-db
+    databaseName: carbon_footprint
+    user: carbon_user
+    plan: free
